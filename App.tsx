@@ -1,5 +1,7 @@
+
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { GoogleGenAI, FunctionDeclaration, Type, LiveSession, LiveServerMessage, Modality } from '@google/genai';
+// Fix: Removed `LiveSession` as it's not an exported member of '@google/genai'.
+import { GoogleGenAI, FunctionDeclaration, Type, LiveServerMessage, Modality } from '@google/genai';
 import { Note, SessionRecord } from './types';
 import { createPcmBlob } from './utils/audioUtils';
 import { MicrophoneIcon, StopIcon, LightbulbIcon, QuestionIcon, ChevronDownIcon, ChevronUpIcon, CogIcon, ArchiveIcon, InfoIcon, HistoryIcon, CloseIcon } from './components/IconComponents';
@@ -32,7 +34,8 @@ const App: React.FC = () => {
     const [selectedVoiceURI, setSelectedVoiceURI] = useState<string | undefined>(undefined);
     const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
 
-    const sessionPromiseRef = useRef<Promise<LiveSession> | null>(null);
+    // Fix: Using `any` for the session promise as `LiveSession` is not an exported type.
+    const sessionPromiseRef = useRef<Promise<any> | null>(null);
     const audioContextRef = useRef<AudioContext | null>(null);
     const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
     const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -42,11 +45,17 @@ const App: React.FC = () => {
         const loadVoices = () => {
             const spanishVoices = window.speechSynthesis.getVoices().filter(v => v.lang.startsWith('es-')).sort((a,b) => a.name.includes('Google') ? -1 : b.name.includes('Google') ? 1: 0);
             setAvailableVoices(spanishVoices);
-            if (spanishVoices.length > 0 && !selectedVoiceURI) setSelectedVoiceURI(spanishVoices[0].voiceURI);
+            if (spanishVoices.length > 0) {
+                setSelectedVoiceURI(currentUri => currentUri || spanishVoices[0].voiceURI);
+            }
         };
-        window.speechSynthesis.onvoiceschanged = loadVoices;
         loadVoices();
-    }, [selectedVoiceURI]);
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+
+        return () => {
+            window.speechSynthesis.onvoiceschanged = null;
+        };
+    }, []);
     
     useEffect(() => {
         try {
@@ -134,13 +143,16 @@ const App: React.FC = () => {
                 if (message.toolCall?.functionCalls) {
                     for (const fc of message.toolCall.functionCalls) {
                         if (fc.name === 'addNote' && fc.args.tip) {
-                            const newNote: Note = { id: crypto.randomUUID(), type: 'tip', content: fc.args.tip };
+                            // Fix: Cast function call argument to string to satisfy TypeScript.
+                            const newNote: Note = { id: crypto.randomUUID(), type: 'tip', content: fc.args.tip as string };
                             setNotes(prev => [...prev, newNote]); speak(`Nota añadida: ${newNote.content}`);
                         } else if (fc.name === 'answerQuestion' && fc.args.question && fc.args.answer) {
-                            const newNote: Note = { id: crypto.randomUUID(), type: 'qa', question: fc.args.question, content: fc.args.answer };
+                            // Fix: Cast function call arguments to string to satisfy TypeScript.
+                            const newNote: Note = { id: crypto.randomUUID(), type: 'qa', question: fc.args.question as string, content: fc.args.answer as string };
                             setActiveAiResponse(newNote); speak(newNote.content);
                         } else if (fc.name === 'provideContext' && fc.args.topic && fc.args.explanation) {
-                            const newNote: Note = { id: crypto.randomUUID(), type: 'context', topic: fc.args.topic, content: fc.args.explanation };
+                            // Fix: Cast function call arguments to string to satisfy TypeScript.
+                            const newNote: Note = { id: crypto.randomUUID(), type: 'context', topic: fc.args.topic as string, content: fc.args.explanation as string };
                             setActiveAiResponse(newNote); speak(`${newNote.topic}: ${newNote.content}`);
                         }
                     }
