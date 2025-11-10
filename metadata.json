@@ -1,0 +1,7 @@
+{
+  "name": "ASCLEPIO CLASS",
+  "description": "An intelligent note-taking assistant that transcribes conversations in real-time, extracts key tips, and answers questions using AI to create structured notes for students.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
